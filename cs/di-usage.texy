@@ -1,0 +1,327 @@
+Získávání závislostí
+********************
+
+/--div .[perex]
+Existuje nìkolik možností, jakým do presenterù, komponent a služeb mùžeme dostat (injektovat) jejich závislosti. V tomto èlánku probereme:
+
+* obecné možnosti získávání závislostí, nejen tìch z "DI Containeru":[dependency-injection] v Nette a
+* konkrétní pøíklady a doporuèení pro presentery, komponenty a služby.
+\--
+
+
+Jak získávat závislosti?
+========================
+
+Závislosti je možné do aplikaèních tøíd získávat ètyømi hlavními zpùsoby:
+
+* pøedávání konstruktorem,
+* pøedávání setterem nebo nastavením vlastnosti,
+* metodou `inject*` 
+* anotací `@inject` u vlastnosti s typem pøístupu `public`.
+
+První dva zpùsoby platí obecnì ve všech objektovì orientovaných jazycích, zbylé jsou specifické pro Nette. Nyní si jednotlivé možnosti pøiblížíme a poté pøejdeme k jejich aplikaci v konkrétních pøípadech.
+
+
+Pøedávání konstruktorem
+-----------------------
+
+Závislosti, které se pøedávají v okamžiku vytváøení objektu. Závislost je deklarována jako parametr konstruktoru a její typ je uveden jako Type Hint:
+
+/--php
+class MyService
+{
+	/** @var AnotherService */
+	private $anotherService
+
+	public __construct(AnotherService $service) {
+		$this->anotherService = $service;
+	}
+}
+\--
+
+Tøída `MyService` takto deklaruje, že pøi vytváøení objektu jí musí být pøedána instance tøídy `AnotherService`. Tato deklarace závislostí je vhodná pro povinné závislosti, které tøída nezbytnì potøebuje ke své funkci, nebo bez ní nepùjde instanci vytvoøit.
+
+
+Pøedávání setterem èi nastavením vlastnosti
+-------------------------------------------
+
+Tyto závislosti jsou pøedávány až po vytvoøení objektu. Nejprve uveïme pøíklad nastavení závislosti setterem. Typ požadované závislosti je uveden jako Type Hint:
+
+/--php
+class MyService
+{
+	/** @var AnotherService */
+	private $anotherService
+		
+	public function setAnotherService(AnotherService $service)
+	{
+		$this->anotherService = $service;
+	}
+}
+\--
+
+Objektu je možné závislost pøedat až po jeho vytvoøení. Tento zpùsob je vhodný pouze pro nepovinné vlastnosti, které nejsou pro funkci tøídy nezbytné, nebo není garantováno, že objekt závislost skuteènì dostane.
+
+Podobnì pak bude fungovat nastavení vlastnosti:
+
+/--php
+class MyService
+{
+	/** @var AnotherService */
+	public $anotherService;
+}
+\--
+
+Tento zpùsob je však nevhodný, nebo vlastnost musí být deklarována jako `public` a nemáme kontrolu nad tím, že pøedaná závislost bude skuteènì daného typu. Pøicházíme také o možnost reagovat na novì pøiøazenou závislost vlastním kódem a porušujeme také princip zapouzdøení.
+
+Tímto zpùsobem se tedy nebudeme dále zabývat.
+
+Pøedávání metodou `inject*`
+---------------------------
+
+Tento zpùsob je specifický pro DI Container v Nette. Jedná se o zvláštní pøípad setteru, metoda zaèíná prefixem `inject`. 
+
+/--php
+class MyService
+{
+	/** @var AnotherService */
+	public $anotherService;
+	
+	public function injectAnotherService(AnotherService $service)
+	{
+		$this->anotherService = $service;
+	}
+}
+\--
+
+Metod `inject*` mùže tøída obsahovat nìkolik a každá mùže mít více parametrù. Každá metoda musí mít samozøejmì unikátní název.
+
+Základní rozdíl od setteru je ten, že Nette je takto pojmenovanou metodu schopné najít a v nìkterých pøípadech zavolat automaticky.
+
+Anotace `@inject`
+-----------------
+
+Další zpùsob specifický pro DI Container v Nette. Jedná se o zvláštní pøípad závislostí pøedávaných pomocí veøejné vlastnosti, tentokrát je však vlastnost oznaèena anotací `@inject` v dokumentaèním komentáøi. Typ pøedávané závislosti je uveden v dokumentaèním komentáøi:
+
+/--php
+class MyService
+{
+	/** @inject @var \App\AnotherService */
+	public $anotherService;
+}
+\--
+
+Nette opìt mùže takto anotovanou vlastnost najít a automaticky vlastnost injektovat. Jako typ tøídy však musí být uveden její plnì kvalifikovaný název, tj. vèetnì celé cesty v namespace. Nelze využít názvù tøíd importovaných pomocí direktiv `use`.
+
+Tento zpùsob má podobné nedostatky, jako pøedávání závislosti do veøejné promìnné - opìt nelze vynutit typ pøedávané tøídy a musíme se spolehnout na to, že bude pøedána instance správné tøídy.
+
+V nìkterých pøípadech však mùže jít o vhodnou variantu, nebo nekomplikuje kód a vyžaduje jen minimum psaní navíc.
+
+Jaký zpùsob zvolit?
+===================
+
+Volba správného zpùsobu závisí na funkci tøídy, kterou vytváøíme. Volba správného zpùsobu se tedy bude lišit u presenterù, komponent a služeb.
+
+Pro všechny zpùsoby je však spoleèné to, že [automatické dosazování závislostí (auto-wiring) | configuring#auto-wiring] funguje pouze u objektù, které Nette vytváøí automaticky prostøednictvím DI Containeru nebo továren. Pokud objekt vytváøíme voláním `new` ve vlastním kódu, musíme závislosti vždy pøedat sami.
+
+Nyní se podíváme na jednotlivé pøíklady a uvedeme preferovaný zpùsob pøedávání závislostí.
+
+Presentery
+----------
+
+Presentery vytváøí Nette Framework automaticky prostøednictvím pøíslušné továrny, která i zajišuje pøedání pøíslušných závislostí. Automaticky jsou pøedány:
+
+1) závislosti uvedené v konstruktoru,
+2) závislosti voláním metod `inject*`,
+3) závislosti pøedané do vlastností s anotací `@inject`.
+
+Následující presenter ilustruje všechny tøi zpùsoby pøedávání:
+
+/--php
+class MyPresenter extends Nette\Application\UI\Presenter
+{	
+	// 1) Pøedání konstruktorem:
+	private $service1;
+	
+	public function __construct(Service1 $service)
+	{
+		$this->service1 = $service;
+	}
+	
+	// 2) Pøedání metodou inject*:
+	private $service2;
+	
+	public function injectService2(Service2 $service)
+	{
+		$this->service2 = $service;
+	}
+	
+	// 3) Pøedání do vlastnosti s anotací @inject:
+	/** @inject @var \App\Service3 */
+	public $service3;
+}
+\--
+
+Preferovaný zpùsob pøedávání závislostí je pomocí anotace `@inject`, nebo nekomplikuje kód a Nette se o pøedání správné závislosti stará automaticky.
+
+Pokud potøebujete pøesnì definovat kontrakt presenteru (mùže být vhodné napøíklad pro testování), použijte metody `@inject`.
+
+Pøedávání pomocí konstruktoru je spíše nedoporuèované, protože pøi dìdìní presenterù je nutné získávat závislosti i všech rodièovských presenterù a to komplikuje signaturu konstruktoru.
+
+Komponenty
+----------
+
+Komponenty jsou typicky vytváøeny pøímo v kódu presenteru, nebo prostøednictvím továren, které jsou specifické pro danou aplikaci. V tìchto pøípadech Nette nemùže závislosti automaticky pøedat a není možné použít metody `inject*`, ani anotaci `@inject`.
+
+Uvažujme následující komponentu:
+
+/--php
+class MyControl extends Nette\Application\UI\Control
+{
+	// 1) Pøedání konstruktorem:
+	private $service1;
+	
+	public function __construct(Service1 $service)
+	{
+		parent::__construct();
+		$this->service1 = $service;
+	}
+	
+	// 2) Pøedání setterem:
+	private $service2;
+	
+	public function setService2(Service2 $service)
+	{
+		$this->service2 = $service;
+	}
+}
+\--
+
+Její použití v presenteru by vypadalo následovnì:
+
+/--php
+class MyPresenter extends Nette\Application\UI\Presenter
+{
+	/** @inject @var \App\Service1 */
+	private $service1;
+	/** @inject @var \App\Service2 */
+	private $service2;
+	
+	protected function createCompoonentMyControl()
+	{
+		$control = new MyControl($this->service1);
+		$control->setService2($this->service2);
+		return $control;
+	}
+}
+\--
+
+Protože závislosti nejsou z DI Containeru pøedávány automaticky, musíme je získat ve tøídì, která danou komponentu vytváøí. V našem pøípadì jde o presenter. Pokud bychom komponentu vytváøeli v jiné komponentì, musíme její závislosti pøidat k závislostem rodièovské komponenty:
+
+/--php
+class MySecondControl extends Nette\Application\UI\Control
+{
+	// Závislost pro MySecondControl:
+	private $service3;
+	// Závislosti pro vnoøenou MyControl:
+	private $service1;
+	private $service2;
+	
+	public function __construct(Service1 $service1, Service2 $service2,
+	                            Service3 $service3)
+	{
+		public::__construct();
+		// pøiøazení do èlenských promìnných $service1, $service2, $service3
+	}
+	
+	protected function createCompoonentMyControl()
+	{
+		$control = new MyControl($this->service1);
+		$control->setService2($this->service2);
+		return $control;
+	}
+}
+\--
+
+Protože tøídy komponent typicky vytváøíme ruènì, je preferovaný zpùsob pøedávání závislostí závislý na tom, zda je závislost povinná nebo není. V pøípadì povinných závislostí použijeme konstruktor, v pøípadì nepovinných setter.
+
+.[caution]
+Pozor, v pøípadì pøedávání do konstruktoru nesmíme zapomenout na volání konstruktoru rodièe: `parent::__construct()`!
+
+Služby
+------
+
+Služby jsou registrovány v DI Containeru a závislosti jsou tedy pøedávány automaticky. Pokud neuvedeme dodateènou konfiguraci, budou pøedány pouze závislosti pomocí konstruktoru:
+
+/--code neon
+services:
+	service1: App\Service1
+\--
+
+Takto definované službì budou pøi vytváøení automaticky pøedány všechny závislosti uvedené v konstruktoru:
+
+/--php
+class Service1
+{
+	private $anotherService;
+	
+	public function __construct(AnotherService $service)
+	{
+		$this->anotherService = $service;
+	}
+}
+\--
+
+Pøedávání konstruktorem je preferovaný zpùsob pro služby.
+
+Pokud chceme pøedávat závislosti pomocí setteru, mùžeme definici služby rozšíøit o sekci `setup`:
+
+/--code neon
+services:
+	service2:
+		class: App\Service2
+		setup:
+			- setAnotherService
+\--
+
+Tøída služby:
+
+/--php
+class Service2
+{
+	private $anotherService;
+	
+	public function setAnotherService(AnotherService $service)
+	{
+		$this->anotherService = $service;
+	}
+}
+\--
+
+Uvedením konfiguraèní direktivy `inject: yes` pak mùžeme zapnout i automatické volání metod `inject*` a pøedávání závislostí do vlastností oznaèených anotací `@inject`:
+
+/--code neon
+services:
+	service3:
+		class: App\Service3
+		inject: yes
+\--
+
+Závislost `Service1` bude pøedána voláním metody `inject*`, závislost `Service2` bude pøiøazena do vlastnosti `$service2`:
+
+/--php
+class Service3
+{
+	// 1) Metoda inject*:
+	private $service1;
+	
+	public function injectService1(Service1 $service)
+	{
+		$this->service1 = $service1;
+	}
+	
+	// 2) Pøiøazení do vlastnosti s anotací @inject:
+	/** @inject @var \App\Service2 */
+	public $service2;
+}
+\--
