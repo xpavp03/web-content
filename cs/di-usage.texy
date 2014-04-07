@@ -325,3 +325,111 @@ class Service3
 	public $service2;
 }
 \--
+
+
+Další možnosti
+==============
+
+Existuje několik dalších možností, jak ovlivnit konfiguraci a předávání závislostí pro presentery a komponenty.
+
+Presenter jako služba
+---------------------
+
+Od Nette verze 2.1 je možné presenter zaregistrovat jako službu do konfiguračního souboru. Při jeho vytváření se však postupuje stejně, jako u libovolné jiné služby. Je tedy možné předat presenteru i parametry, které nelze dosadit pomocí autowire, a přidat volání setterů.
+
+Volání metod `inject*` a předávání závislostí do členských proměnných s anotací `@inject` se vykoná vždy, není tedy nutné uvádět v konfiguraci `inject: yes`.
+
+Definice presenteru může vypadat například takto:
+
+/--code neon
+services:
+	- App\Presenters\ImagePresenter("%wwwDir%/media")
+\--
+
+/--php
+class ImagePresenter extends Nette\Application\UI\Presenter
+{
+	private $imageDir;
+	private $optimizer;
+
+	public function __construct($imageDir, ImageOptimizer $optimizer)
+	{
+		$this->imageDir = $imageDir;
+		$this->optimizer = $optimizer;
+	}
+}
+\--
+
+Presenteru se pak jako první parametr konstruktoru předá uvedený řetězec, zbylé parametry se doplní pomocí autowire.
+
+Při navrhování presenterů však buďte opatrní a dbejte na to, aby v nich nebyla obsažena aplikační logika, která patří do služeb. Pokud potřebujete presenter dodatečně konfigurovat, často to bývá známkou toho, že nemáte problém dostatečně dekomponovaný.
+
+
+Továrna na komponenty
+---------------------
+
+Podobně jako presentery, i komponenty můžeme zaregistrovat v konfiguračním souboru. Avšak zatímco u presenteru se dá očekávat, že bude existovat v průběhu vyřizování celého požadavku pouze jeden, komponent může být víc. Proto místo registrace jako služby použijeme továrnu.
+
+Od Nette 2.1 je možné používat továrny generované proti rozhraní. U rozhraní stačí u příslušných metod uvést anotaci `@return`, která říká, instanci jaké třídy má továrna vytvářet. Nette pak pro rozhraní vygeneruje správnou implementaci.
+
+Rozhraní musí mít právě jednu metodu pojmenovanou `create`, nebo `get`. Naše rozhraní pro komponentu může vypadat například takto:
+
+/--php
+namespace App\Components;
+
+interface IUserTableFactory
+{
+	/**
+	 * @return UserTable
+	 */
+	public function create();
+}
+\--
+
+Metoda `createControl` bude vytvářet komponentu `UserTable` s následující definicí:
+
+/--php
+namespace App\Components;
+
+class UserTable extends Control
+{
+	private $userManager;
+
+	public function __construct(UserManager $userManager)
+	{
+		$this->userManager = $userManager;
+	}
+}
+\--
+
+Továrnu zaregistrujeme v `config.neon`:
+
+/--code neon
+services:
+	- App\Components\IUserTableFactory
+\--
+
+Nette zkontroluje, zda se jedná o rozhraní a pokud ano, tak vygeneruje příslušnou implementaci továrny. Uvedený zápis by bylo možné také rozepsat takto:
+
+/--code neon
+services:
+	userTableFactory:
+		implement: App\Components\IUserTableFactory
+\--
+
+V presenteru pak bude stačit získat příslušnou závislost a zavolat metodu `create`:
+
+/--php
+class UserPresenter extends Nette\Application\UI\Presenter
+{
+	/** @var \App\Components\IUserTableFactory @inject */
+	public $userTableFactory;
+
+	protected function createComponentUserTable()
+	{
+		return $this->userTableFactory->create();
+	}
+}
+\--
+
+Vytvořené komponentě budou automaticky konstruktorem předány její závislosti.
