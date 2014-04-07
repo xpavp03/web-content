@@ -15,9 +15,9 @@ Jak získávat závislosti?
 Závislosti je možné do aplikačních tříd získávat čtyřmi hlavními způsoby:
 
 * předávání konstruktorem,
-* předávání setterem nebo nastavením vlastnosti,
+* předávání setterem nebo nastavením členské proměnné,
 * metodou `inject*` 
-* anotací `@inject` u vlastnosti s typem přístupu `public`.
+* anotací `@inject` u proměnné s typem přístupu `public`.
 
 První dva způsoby platí obecně ve všech objektově orientovaných jazycích, zbylé jsou specifické pro Nette. Nyní si jednotlivé možnosti přiblížíme a poté přejdeme k jejich aplikaci v konkrétních případech.
 
@@ -33,7 +33,7 @@ class MyService
 	/** @var AnotherService */
 	private $anotherService
 
-	public __construct(AnotherService $service) {
+	public function __construct(AnotherService $service) {
 		$this->anotherService = $service;
 	}
 }
@@ -42,8 +42,8 @@ class MyService
 Třída `MyService` takto deklaruje, že při vytváření objektu jí musí být předána instance třídy `AnotherService`. Tato deklarace závislostí je vhodná pro povinné závislosti, které třída nezbytně potřebuje ke své funkci, neboť bez ní nepůjde instanci vytvořit.
 
 
-Předávání setterem či nastavením vlastnosti
--------------------------------------------
+Předávání setterem či nastavením proměnné
+-----------------------------------------
 
 Tyto závislosti jsou předávány až po vytvoření objektu. Nejprve uveďme příklad nastavení závislosti setterem. Typ požadované závislosti je uveden jako Type Hint:
 
@@ -60,9 +60,9 @@ class MyService
 }
 \--
 
-Objektu je možné závislost předat až po jeho vytvoření. Tento způsob je vhodný pouze pro nepovinné vlastnosti, které nejsou pro funkci třídy nezbytné, neboť není garantováno, že objekt závislost skutečně dostane.
+Objektu je možné závislost předat až po jeho vytvoření. Tento způsob je vhodný pouze pro nepovinné závislosti, které nejsou pro funkci třídy nezbytné, neboť není garantováno, že objekt závislost skutečně dostane.
 
-Podobně pak bude fungovat nastavení vlastnosti:
+Podobně pak bude fungovat nastavení členské proměnné:
 
 /--php
 class MyService
@@ -72,7 +72,7 @@ class MyService
 }
 \--
 
-Tento způsob je však nevhodný, neboť vlastnost musí být deklarována jako `public` a nemáme kontrolu nad tím, že předaná závislost bude skutečně daného typu. Přicházíme také o možnost reagovat na nově přiřazenou závislost vlastním kódem a porušujeme také princip zapouzdření.
+Tento způsob je však nevhodný, neboť členská proměnná musí být deklarována jako `public` a nemáme kontrolu nad tím, že předaná závislost bude skutečně daného typu. Přicházíme také o možnost reagovat na nově přiřazenou závislost vlastním kódem a porušujeme také princip zapouzdření.
 
 Tímto způsobem se tedy nebudeme dále zabývat.
 
@@ -96,12 +96,12 @@ class MyService
 
 Metod `inject*` může třída obsahovat několik a každá může mít více parametrů. Každá metoda musí mít samozřejmě unikátní název.
 
-Základní rozdíl od setteru je ten, že Nette je takto pojmenovanou metodu schopné najít a v některých případech zavolat automaticky.
+Základní rozdíl od setteru je ten, že Nette je takto pojmenovanou metodu schopné v presenterech najít a automaticky zavolat se správnými parametry. U služeb lze vyhledání a nalezení vynutit konfigurací - bude vysvětleno dále.
 
 Anotace `@inject`
 -----------------
 
-Další způsob specifický pro DI Container v Nette. Jedná se o zvláštní případ závislostí předávaných pomocí veřejné vlastnosti, tentokrát je však vlastnost označena anotací `@inject` v dokumentačním komentáři. Typ předávané závislosti je uveden v dokumentačním komentáři:
+Další způsob specifický pro DI Container v Nette. Jedná se o zvláštní případ závislostí předávaných pomocí public proměnné, tentokrát je však proměnná označena anotací `@inject` v dokumentačním komentáři. Typ předávané závislosti je uveden v dokumentačním komentáři:
 
 /--php
 class MyService
@@ -111,7 +111,7 @@ class MyService
 }
 \--
 
-Nette opět může takto anotovanou vlastnost najít a automaticky vlastnost injektovat. Jako typ třídy však musí být uveden její plně kvalifikovaný název, tj. včetně celé cesty v namespace. Nelze využít názvů tříd importovaných pomocí direktiv `use`.
+Nette opět může takto anotovanou proměnnou najít a automaticky závislost injektovat. Jako typ třídy musí být uveden její plný název včetně celého namespace. Od verze Nette 2.2 lze využít aliasů definovaných pomocí direktiv `use`.
 
 Tento způsob má podobné nedostatky, jako předávání závislosti do veřejné proměnné - opět nelze vynutit typ předávané třídy a musíme se spolehnout na to, že bude předána instance správné třídy.
 
@@ -120,9 +120,9 @@ V některých případech však může jít o vhodnou variantu, neboť nekomplik
 Jaký způsob zvolit?
 ===================
 
-Volba správného způsobu závisí na funkci třídy, kterou vytváříme. Volba správného způsobu se tedy bude lišit u presenterů, komponent a služeb.
+Předávání závislostí pomocí konstruktoru je dostupné u všech vytvářených tříd, podobně pak použití setteru u nepovinných závislostí. Další techniky, tedy metody `inject*` a členské proměnné označené anotací `@inject`, jsou pak méně čisté techniky a jsou dostupné jen v presenterech, případně je možné je vynutit konfigurací u služeb vytvářených DI Containerem. Používáme je tedy pouze ve specifických případech, například u již zmíněných presenterů.
 
-Pro všechny způsoby je však společné to, že [automatické dosazování závislostí (auto-wiring) | configuring#auto-wiring] funguje pouze u objektů, které Nette vytváří automaticky prostřednictvím DI Containeru nebo továren. Pokud objekt vytváříme voláním `new` ve vlastním kódu, musíme závislosti vždy předat sami.
+Pro všechny způsoby je společné, že [automatické dosazování závislostí (auto-wiring) | configuring#auto-wiring] funguje pouze u objektů, které Nette vytváří automaticky prostřednictvím DI Containeru nebo továren. Pokud objekt vytváříme voláním `new` ve vlastním kódu, musíme závislosti vždy předat sami.
 
 Nyní se podíváme na jednotlivé příklady a uvedeme preferovaný způsob předávání závislostí.
 
@@ -133,7 +133,7 @@ Presentery vytváří Nette Framework automaticky prostřednictvím příslušn�
 
 1) závislosti uvedené v konstruktoru,
 2) závislosti voláním metod `inject*`,
-3) závislosti předané do vlastností s anotací `@inject`.
+3) závislosti předané do proměnných s anotací `@inject`.
 
 Následující presenter ilustruje všechny tři způsoby předávání:
 
@@ -156,7 +156,7 @@ class MyPresenter extends Nette\Application\UI\Presenter
 		$this->service2 = $service;
 	}
 	
-	// 3) Předání do vlastnosti s anotací @inject:
+	// 3) Předání do proměnné s anotací @inject:
 	/** @inject @var \App\Service3 */
 	public $service3;
 }
@@ -164,7 +164,7 @@ class MyPresenter extends Nette\Application\UI\Presenter
 
 Preferovaný způsob předávání závislostí je pomocí anotace `@inject`, neboť nekomplikuje kód a Nette se o předání správné závislosti stará automaticky.
 
-Pokud potřebujete přesně definovat kontrakt presenteru (může být vhodné například pro testování), použijte metody `@inject`.
+Pokud potřebujete přesně definovat kontrakt presenteru (může být vhodné například pro testování), použijte metody `inject*`.
 
 Předávání pomocí konstruktoru je spíše nedoporučované, protože při dědění presenterů je nutné získávat závislosti i všech rodičovských presenterů a to komplikuje signaturu konstruktoru.
 
@@ -298,7 +298,7 @@ class Service2
 }
 \--
 
-Uvedením konfigurační direktivy `inject: yes` pak můžeme zapnout i automatické volání metod `inject*` a předávání závislostí do vlastností označených anotací `@inject`:
+Uvedením konfigurační direktivy `inject: yes` pak můžeme zapnout i automatické volání metod `inject*` a předávání závislostí do členských proměnných označených anotací `@inject`:
 
 /--code neon
 services:
@@ -307,7 +307,7 @@ services:
 		inject: yes
 \--
 
-Závislost `Service1` bude předána voláním metody `inject*`, závislost `Service2` bude přiřazena do vlastnosti `$service2`:
+Závislost `Service1` bude předána voláním metody `inject*`, závislost `Service2` bude přiřazena do proměnné `$service2`:
 
 /--php
 class Service3
@@ -320,7 +320,7 @@ class Service3
 		$this->service1 = $service1;
 	}
 	
-	// 2) Přiřazení do vlastnosti s anotací @inject:
+	// 2) Přiřazení do proměnné s anotací @inject:
 	/** @inject @var \App\Service2 */
 	public $service2;
 }
