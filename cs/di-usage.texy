@@ -372,7 +372,7 @@ Podobně jako presentery, i komponenty můžeme zaregistrovat v konfiguračním 
 
 Od Nette 2.1 je možné používat továrny generované proti rozhraní. U rozhraní stačí u příslušných metod uvést anotaci `@return`, která říká, instanci jaké třídy má továrna vytvářet. Nette pak pro rozhraní vygeneruje správnou implementaci.
 
-Rozhraní musí mít právě jednu metodu pojmenovanou `create`, nebo `get`. Naše rozhraní pro komponentu může vypadat například takto:
+Rozhraní musí mít právě jednu metodu pojmenovanou `create`. Naše rozhraní pro komponentu může vypadat například takto:
 
 /--php
 namespace App\Components;
@@ -386,7 +386,7 @@ interface IUserTableFactory
 }
 \--
 
-Metoda `createControl` bude vytvářet komponentu `UserTable` s následující definicí:
+Metoda `create` bude vytvářet komponentu `UserTable` s následující definicí:
 
 /--php
 namespace App\Components;
@@ -416,6 +416,8 @@ services:
 	userTableFactory:
 		implement: App\Components\IUserTableFactory
 \--
+
+Při zápisu tímto způsobem je možné pro komponentu definovat argumenty pomocí klíče `arguments` a doplňující konfiguraci pomocí `setup` stejně, jako u ostatních služeb.
 
 V presenteru pak bude stačit získat příslušnou závislost a zavolat metodu `create`:
 
