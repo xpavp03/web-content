@@ -492,6 +492,11 @@ public function checkRequirements($element)
 }
 \--
 
+Ve stejné metodě také nastavujeme autentikátor:
+/--php
+	$this->getUser()->setAuthenticator($backendAuthenticator);
+\--
+
 
 
 Události $onLoggedIn, $onLoggedOut
